@@ -2,9 +2,8 @@ package io.codera.quant.config;
 
 import com.google.inject.AbstractModule;
 import com.google.inject.Provides;
-import com.ib.client.Controller;
+import com.ib.client.OrderType;
 import com.ib.controller.ApiController;
-import com.ib.controller.OrderType;
 import io.codera.quant.context.IbTradingContext;
 import io.codera.quant.context.TradingContext;
 import io.codera.quant.strategy.Criterion;
@@ -14,11 +13,15 @@ import io.codera.quant.strategy.StrategyRunner;
 import io.codera.quant.strategy.criterion.NoOpenOrdersExistEntryCriterion;
 import io.codera.quant.strategy.criterion.OpenIbOrdersExistForAllSymbolsExitCriterion;
 import io.codera.quant.strategy.criterion.common.NoPendingOrdersCommonCriterion;
-import io.codera.quant.strategy.kalman.KalmanFilterStrategy;
+import io.codera.quant.strategy.criterion.stoploss.DefaultStopLossCriterion;
+import io.codera.quant.strategy.meanrevertion.BollingerBandsStrategy;
+import io.codera.quant.strategy.meanrevertion.ZScore;
+import io.codera.quant.strategy.meanrevertion.ZScoreEntryCriterion;
+import io.codera.quant.strategy.meanrevertion.ZScoreExitCriterion;
+import io.codera.quant.util.MathUtil;
 import java.sql.SQLException;
 import java.util.Arrays;
 import java.util.List;
-import org.lst.trading.main.strategy.kalman.Cointegration;
 
 /**
  */
@@ -40,16 +43,16 @@ public class Config extends AbstractModule {
   }
 
   @Provides
-  Controller apiController() {
+  ApiController apiController() {
     ApiController controller =
         new ApiController(new IbConnectionHandler(), valueOf -> {
         }, valueOf -> {});
-    controller.connect(host, port, 0);
+    controller.connect(host, port, 0, null);
     return controller;
   }
 
   @Provides
-  TradingContext tradingContext(Controller controller) throws SQLException, ClassNotFoundException {
+  TradingContext tradingContext(ApiController controller) throws SQLException, ClassNotFoundException {
     return new IbTradingContext(
         controller,
         new ContractBuilder(),
@@ -63,11 +66,19 @@ public class Config extends AbstractModule {
   Strategy strategy(TradingContext tradingContext) {
     List<String> contracts = Arrays.asList(symbolList.split(","));
 
-    Strategy strategy = new KalmanFilterStrategy(
+    ZScore zScore = new ZScore(20, new MathUtil());
+
+    Strategy strategy = new BollingerBandsStrategy(
         contracts.get(0),
         contracts.get(1),
         tradingContext,
-        new Cointegration(1e-4, 1e-3));
+        zScore);
+
+    Criterion zScoreEntryCriterion = new ZScoreEntryCriterion(contracts.get(0), contracts.get(1), 1, zScore,
+        tradingContext);
+
+    Criterion zScoreExitCriterion = new ZScoreExitCriterion(contracts.get(0), contracts.get(1), 0, zScore,
+        tradingContext);
 
     Criterion noPendingOrdersCommonCriterion =
         new NoPendingOrdersCommonCriterion(tradingContext, contracts);
@@ -78,17 +89,17 @@ public class Config extends AbstractModule {
     Criterion openOrdersExistForAllSymbolsCriterion =
         new OpenIbOrdersExistForAllSymbolsExitCriterion(tradingContext, contracts);
 
-    ((KalmanFilterStrategy)strategy).setEntrySdMultiplier(1.2);
-    ((KalmanFilterStrategy)strategy).setErrorQueueSize(30);
-    ((KalmanFilterStrategy)strategy).setExitMultiplier(2);
-//    Criterion stopLoss = new DefaultStopLossCriterion(contracts, -100, tradingContext);
+    Criterion stopLoss = new DefaultStopLossCriterion(contracts, -100, tradingContext);
 
     strategy.addCommonCriterion(noPendingOrdersCommonCriterion);
 
     strategy.addEntryCriterion(noOpenOrdersExistCriterion);
+    strategy.addEntryCriterion(zScoreEntryCriterion);
 
     strategy.addExitCriterion(openOrdersExistForAllSymbolsCriterion);
-//    strategy.addStopLossCriterion(stopLoss);
+    strategy.addEntryCriterion(zScoreExitCriterion);
+
+    strategy.addStopLossCriterion(stopLoss);
 
     return strategy;
 

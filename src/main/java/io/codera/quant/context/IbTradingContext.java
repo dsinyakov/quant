@@ -2,14 +2,13 @@ package io.codera.quant.context;
 
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
-import com.ib.client.Controller;
-import com.ib.controller.NewContract;
-import com.ib.controller.NewOrder;
-import com.ib.controller.NewOrderState;
-import com.ib.controller.NewTickType;
-import com.ib.controller.OrderStatus;
-import com.ib.controller.OrderType;
-import com.ib.controller.Types;
+import com.ib.client.Contract;
+import com.ib.client.OrderState;
+import com.ib.client.OrderStatus;
+import com.ib.client.OrderType;
+import com.ib.client.TickType;
+import com.ib.client.Types;
+import com.ib.controller.ApiController;
 import io.codera.quant.config.ContractBuilder;
 import io.codera.quant.exception.NoOrderAvailable;
 import io.codera.quant.exception.PriceNotAvailableException;
@@ -32,7 +31,6 @@ import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
-import org.joda.time.DateTime;
 import org.lst.trading.lib.backtest.SimpleClosedOrder;
 import org.lst.trading.lib.backtest.SimpleOrder;
 import org.lst.trading.lib.model.ClosedOrder;
@@ -51,10 +49,10 @@ import static com.google.common.base.Preconditions.checkArgument;
 public class IbTradingContext implements TradingContext {
 
   private List<String> contracts;
-  private Map<String, NewContract> ibContracts;
+  private Map<String, Contract> ibContracts;
   private Map<String, Order> ibOrders;
-  private final Controller controller;
-  private Map<String, Map<NewTickType, Double>> contractPrices;
+  private final ApiController controller;
+  private Map<String, Map<TickType, Double>> contractPrices;
   private Map<String, MarketDataObserver> observers;
   private OrderType orderType;
   private AtomicInteger orderId = new AtomicInteger(0);
@@ -66,7 +64,7 @@ public class IbTradingContext implements TradingContext {
 
   private static final Logger log = LoggerFactory.getLogger(IbTradingContext.class);
 
-  private IbTradingContext(Controller controller, ContractBuilder contractBuilder, int leverage,
+  private IbTradingContext(ApiController controller, ContractBuilder contractBuilder, int leverage,
                            OrderType orderType) {
     this.controller = controller;
     this.contractBuilder = contractBuilder;
@@ -74,7 +72,7 @@ public class IbTradingContext implements TradingContext {
     this.orderType = orderType;
   }
 
-  public IbTradingContext(Controller controller, ContractBuilder contractBuilder,
+  public IbTradingContext(ApiController controller, ContractBuilder contractBuilder,
                           OrderType orderType, int leverage)
       throws ClassNotFoundException, SQLException {
     this(controller, contractBuilder, leverage, orderType);
@@ -92,7 +90,7 @@ public class IbTradingContext implements TradingContext {
     controller.reqAccountUpdates(true, "", accountObserver);
   }
 
-  public IbTradingContext(Controller controller, ContractBuilder contractBuilder,
+  public IbTradingContext(ApiController controller, ContractBuilder contractBuilder,
                           OrderType orderType, Connection connection, int leverage)
       throws ClassNotFoundException, SQLException {
     this(controller, contractBuilder, orderType, leverage);
@@ -103,10 +101,10 @@ public class IbTradingContext implements TradingContext {
   public double getLastPrice(String contract) throws PriceNotAvailableException {
     checkArgument(contract != null, "contract is null");
     if(!contractPrices.containsKey(contract) ||
-        !contractPrices.get(contract).containsKey(NewTickType.ASK)) {
+        !contractPrices.get(contract).containsKey(TickType.ASK)) {
       throw new PriceNotAvailableException();
     }
-    double price = contractPrices.get(contract).get(NewTickType.ASK);
+    double price = contractPrices.get(contract).get(TickType.ASK);
     if (connection != null) {
       try {
         String sql = "INSERT INTO quotes (symbol, price) VALUES (?, ?)";
@@ -120,10 +118,10 @@ public class IbTradingContext implements TradingContext {
       }
 
     }
-    return contractPrices.get(contract).get(NewTickType.ASK);
+    return contractPrices.get(contract).get(TickType.ASK);
   }
 
-  public double getLastPrice(String contract, NewTickType tickType) throws PriceNotAvailableException {
+  public double getLastPrice(String contract, TickType tickType) throws PriceNotAvailableException {
     checkArgument(contract != null, "contract is null");
     checkArgument(tickType != null, "tickType is null");
     if(!contractPrices.containsKey(contract) || !contractPrices.get(contract).
@@ -140,7 +138,7 @@ public class IbTradingContext implements TradingContext {
     IbMarketDataObserver marketDataObserver = new IbMarketDataObserver(contractSymbol);
     observers.put(contractSymbol, marketDataObserver);
 
-    NewContract contract = contractBuilder.build(contractSymbol);
+    Contract contract = contractBuilder.build(contractSymbol);
     ibContracts.put(contractSymbol, contract);
 
     controller.reqTopMktData(contract, "", false, marketDataObserver);
@@ -156,7 +154,7 @@ public class IbTradingContext implements TradingContext {
         if(contractPrices.containsKey(contractSymbol)) {
           contractPrices.get(contractSymbol).put(price.getTickType(), price.getPrice());
         } else {
-          Map<NewTickType, Double> map = Maps.newConcurrentMap();
+          Map<TickType, Double> map = Maps.newConcurrentMap();
           map.put(price.getTickType(), price.getPrice());
           contractPrices.put(contractSymbol, map);
         }
@@ -263,7 +261,7 @@ public class IbTradingContext implements TradingContext {
 
     ContractBuilder contractBuilder = new ContractBuilder();
 
-    NewContract contract = contractBuilder.build(symbol);
+    Contract contract = contractBuilder.build(symbol);
     HistoryObserver historyObserver = new IbHistoryObserver(symbol);
     controller.reqHistoricalData(contract, date, daysOfHistory, Types.DurationUnit.DAY,
         Types.BarSize._1_min, Types.WhatToShow.TRADES, false, historyObserver);
@@ -279,7 +277,7 @@ public class IbTradingContext implements TradingContext {
     String date = LocalDateTime.now().format(formatter);
     ContractBuilder contractBuilder = new ContractBuilder();
 
-    NewContract contract = contractBuilder.build(symbol);
+    Contract contract = contractBuilder.build(symbol);
     HistoryObserver historyObserver = new IbHistoryObserver(symbol);
     controller.reqHistoricalData(contract, date, numberOfMinutes * 60, Types.DurationUnit.SECOND,
         Types.BarSize._1_min, Types.WhatToShow.TRADES, false, historyObserver);
@@ -302,9 +300,9 @@ public class IbTradingContext implements TradingContext {
     return history;
   }
 
-  private Observable<NewOrderState> submitIbOrder(String contractSymbol, boolean buy, int amount,
-                                                  double price) {
-    NewOrder ibOrder = new NewOrder();
+  private Observable<OrderState> submitIbOrder(String contractSymbol, boolean buy, int amount,
+                                               double price) {
+    com.ib.client.Order ibOrder = new com.ib.client.Order();
 
     if(buy) {
       ibOrder.action(Types.Action.BUY);
@@ -336,7 +334,7 @@ public class IbTradingContext implements TradingContext {
                    Instant openInstant,
                    double openPrice,
                    int amount,
-                   Observable<NewOrderState> observableOrderState) {
+                   Observable<OrderState> observableOrderState) {
       super(id, contractSymbol, openInstant, openPrice, amount);
       this.orderStatus = OrderStatus.Inactive;
       observableOrderState.subscribe(newOrderState -> orderStatus = newOrderState.status());
@@ -355,7 +353,7 @@ public class IbTradingContext implements TradingContext {
     public IbClosedOrder(SimpleOrder simpleOrder,
                          Instant closeInstant,
                          double closePrice,
-                         Observable<NewOrderState> observableOrderState) {
+                         Observable<OrderState> observableOrderState) {
       super(simpleOrder, closePrice, closeInstant);
       this.orderStatus = OrderStatus.Inactive;
       observableOrderState.subscribe(newOrderState -> {
@@ -377,7 +375,7 @@ public class IbTradingContext implements TradingContext {
   @Override
   public double getChangeBySymbol(String symbol) throws PriceNotAvailableException {
 
-    double closePrice = getLastPrice(symbol, NewTickType.CLOSE);
+    double closePrice = getLastPrice(symbol, TickType.CLOSE);
     double currentPrice = getLastPrice(symbol);
 
     BigDecimal diff = BigDecimal.valueOf(currentPrice).add(BigDecimal.valueOf(-closePrice));
@@ -391,7 +389,7 @@ public class IbTradingContext implements TradingContext {
 
   public double getChangeBySymbol(String symbol, double price) throws PriceNotAvailableException {
 
-    double closePrice = getLastPrice(symbol, NewTickType.CLOSE);
+    double closePrice = getLastPrice(symbol, TickType.CLOSE);
 
     BigDecimal diff = BigDecimal.valueOf(price).add(BigDecimal.valueOf(-closePrice));
 

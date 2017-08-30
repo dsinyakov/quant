@@ -40,6 +40,6 @@ public interface AccountObserver extends IAccountHandler {
 
   void setCashBalance(double balance);
   void setNetValue(double netValue);
-  void updateSymbolPosition(String symbol, int position);
+  void updateSymbolPosition(String symbol, double position);
 
 }
