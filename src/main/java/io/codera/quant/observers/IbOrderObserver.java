@@ -1,6 +1,6 @@
 package io.codera.quant.observers;
 
-import com.ib.controller.NewOrderState;
+import com.ib.client.OrderState;
 import rx.Observable;
 import rx.subjects.PublishSubject;
 
@@ -9,18 +9,18 @@ import rx.subjects.PublishSubject;
  */
 public class IbOrderObserver implements OrderObserver {
 
-  private final PublishSubject<NewOrderState> orderSubject;
+  private final PublishSubject<OrderState> orderSubject;
 
   public IbOrderObserver() {
     orderSubject = PublishSubject.create();
   }
 
   @Override
-  public void orderState(NewOrderState orderState) {
+  public void orderState(OrderState orderState) {
     orderSubject.onNext(orderState);
   }
 
-  public Observable<NewOrderState> observableOrderState() {
+  public Observable<OrderState> observableOrderState() {
     return orderSubject.asObservable();
   }
 }

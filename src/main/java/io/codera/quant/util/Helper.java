@@ -4,12 +4,10 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
-import com.ib.client.Controller;
+import com.ib.client.Contract;
+import com.ib.client.Types;
 import com.ib.controller.ApiController;
-import com.ib.controller.NewContract;
-import com.ib.controller.Types;
 import io.codera.quant.config.ContractBuilder;
-import io.codera.quant.config.IbConnectionHandler;
 import io.codera.quant.observers.HistoryObserver;
 import io.codera.quant.observers.IbHistoryObserver;
 import java.io.IOException;
@@ -86,7 +84,7 @@ public class Helper {
   }
 
   public static MultipleDoubleSeries getHistoryForSymbols(
-      Controller controller,
+      ApiController controller,
       int daysOfHistory,
       List<String> symbols
   ) {
@@ -99,7 +97,7 @@ public class Helper {
 
     List<DoubleSeries> doubleSeries = Lists.newArrayList();
     for(String symbol : symbols) {
-      NewContract contract = contractBuilder.build(symbol);
+      Contract contract = contractBuilder.build(symbol);
       HistoryObserver historyObserver = new IbHistoryObserver(symbol);
       controller.reqHistoricalData(contract, date, daysOfHistory, Types.DurationUnit.DAY,
           Types.BarSize._1_min, Types.WhatToShow.TRADES, false, historyObserver);

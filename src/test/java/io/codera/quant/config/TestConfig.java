@@ -2,9 +2,9 @@ package io.codera.quant.config;
 
 import com.google.inject.AbstractModule;
 import com.google.inject.Provides;
-import com.ib.client.Controller;
+
+import com.ib.client.OrderType;
 import com.ib.controller.ApiController;
-import com.ib.controller.OrderType;
 import io.codera.quant.context.IbTradingContext;
 import io.codera.quant.context.TradingContext;
 import io.codera.quant.strategy.IbPerMinuteStrategyRunner;
@@ -25,16 +25,16 @@ public class TestConfig extends AbstractModule {
   }
 
   @Provides
-  Controller apiController() {
+  ApiController apiController() {
     ApiController controller =
         new ApiController(new IbConnectionHandler(), valueOf -> {
         }, valueOf -> {});
-    controller.connect(HOST, PORT, 0);
+    controller.connect(HOST, PORT, 0, null);
     return controller;
   }
 
   @Provides
-  TradingContext tradingContext(Controller controller) throws SQLException, ClassNotFoundException {
+  TradingContext tradingContext(ApiController controller) throws SQLException, ClassNotFoundException {
     return new IbTradingContext(
         controller,
         new ContractBuilder(),

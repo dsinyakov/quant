@@ -1,8 +1,8 @@
 package io.codera.quant.config;
 
 import com.google.common.collect.ImmutableMap;
-import com.ib.controller.NewContract;
-import com.ib.controller.Types;
+import com.ib.client.Contract;
+import com.ib.client.Types;
 import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -18,8 +18,8 @@ public class ContractBuilder {
   private static final Map<String, Integer> futuresMap = ImmutableMap.of("ES=F", 50, "YM=F", 5,
       "TF=F", 50);
 
-  public NewContract build(String symbolName) {
-    NewContract contract = new NewContract();
+  public Contract build(String symbolName) {
+    Contract contract = new Contract();
 
     if(symbolName.contains("/")) {
       log.debug("{} is a Forex symbol", symbolName);
@@ -39,7 +39,7 @@ public class ContractBuilder {
           "TF", "NYBOT");
       contract.symbol(s);
       contract.exchange(futuresMap.get(s));
-      contract.expiry("201706");
+//      contract.expiry("201706");
       contract.secType(Types.SecType.FUT);
       contract.currency("USD");
       log.info("Contract " + contract);

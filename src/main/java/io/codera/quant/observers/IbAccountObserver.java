@@ -31,7 +31,7 @@ public class IbAccountObserver implements AccountObserver {
   }
 
   @Override
-  public void updateSymbolPosition(String symbol, int position) {
+  public void updateSymbolPosition(String symbol, double position) {
     logger.info("{} position: {}", symbol, position);
 
   }

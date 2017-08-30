@@ -1,6 +1,6 @@
 package org.lst.trading.lib.model;
 
-import com.ib.controller.OrderStatus;
+import com.ib.client.OrderStatus;
 import io.codera.quant.config.ContractBuilder;
 import java.time.Instant;
 

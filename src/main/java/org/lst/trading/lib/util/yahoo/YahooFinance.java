@@ -111,7 +111,8 @@ public class YahooFinance implements HistoricalPriceService {
   }
 
   private static String createHistoricalPricesUrl(String symbol, Instant from, Instant to) {
-    return format("http://ichart.yahoo.com/table.csv?s=%s&%s&%s&g=d&ignore=.csv", symbol, toYahooQueryDate(from, "abc"), toYahooQueryDate(to, "def"));
+    return format("https://ichart.yahoo.com/table.csv?s=%s&%s&%s&g=d&ignore=.csv", symbol,
+        toYahooQueryDate(from, "abc"), toYahooQueryDate(to, "def"));
   }
 
   private static String toYahooQueryDate(Instant instant, String names) {

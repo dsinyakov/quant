@@ -1,7 +1,8 @@
 package io.codera.quant.observers;
 
+import com.ib.client.TickType;
+import com.ib.client.Types;
 import com.ib.controller.ApiController.ITopMktDataHandler;
-import com.ib.controller.NewTickType;
 import io.codera.quant.config.ContractBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -25,7 +26,7 @@ public class IbMarketDataObserver implements MarketDataObserver {
   }
 
   @Override
-  public void tickPrice(NewTickType tickType, double price, int canAutoExecute) {
+  public void tickPrice(TickType tickType, double price, int canAutoExecute) {
     if(price == -1.0) { // do not update price with bogus value when market is about ot be closed
       return;
     }
