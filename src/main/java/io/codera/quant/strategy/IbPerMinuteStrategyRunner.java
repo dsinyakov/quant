@@ -7,7 +7,7 @@ import java.util.TimerTask;
 import org.joda.time.DateTime;
 
 /**
- *
+ * Strategy runner that executes every minute
  */
 public class IbPerMinuteStrategyRunner implements StrategyRunner {
 

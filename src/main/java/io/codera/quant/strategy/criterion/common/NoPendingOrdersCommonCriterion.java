@@ -1,6 +1,7 @@
 package io.codera.quant.strategy.criterion.common;
 
-import com.ib.controller.OrderStatus;
+
+import com.ib.client.OrderStatus;
 import io.codera.quant.context.TradingContext;
 import io.codera.quant.exception.CriterionViolationException;
 import io.codera.quant.exception.NoOrderAvailable;

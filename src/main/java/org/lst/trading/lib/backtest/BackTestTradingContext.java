@@ -85,7 +85,7 @@ public class BackTestTradingContext implements TradingContext {
   }
 
   @Override public Order order(String instrument, boolean buy, int amount) {
-    check(amount > 0);
+//    check(amount > 0);
     logger.info("OPEN {} in amount {}", instrument, (buy ? 1 : -1) * amount);
     double price = getLastPrice(instrument);
     SimpleOrder order = new SimpleOrder(mOrderId++, instrument, getTime(), price, amount * (buy ? 1 : -1));

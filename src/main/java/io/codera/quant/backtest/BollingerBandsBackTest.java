@@ -1,4 +1,4 @@
-package io.codera.quant;
+package io.codera.quant.backtest;
 
 import com.google.common.collect.ImmutableList;
 import com.ib.controller.ApiController;
@@ -8,38 +8,38 @@ import io.codera.quant.strategy.Criterion;
 import io.codera.quant.strategy.Strategy;
 import io.codera.quant.strategy.criterion.NoOpenOrdersExistEntryCriterion;
 import io.codera.quant.strategy.criterion.OpenOrdersExistForAllSymbolsExitCriterion;
-import io.codera.quant.strategy.kalman.KalmanFilterStrategy;
+import io.codera.quant.strategy.meanrevertion.BollingerBandsStrategy;
+import io.codera.quant.strategy.meanrevertion.ZScore;
+import io.codera.quant.strategy.meanrevertion.ZScoreEntryCriterion;
+import io.codera.quant.strategy.meanrevertion.ZScoreExitCriterion;
 import io.codera.quant.util.Helper;
-import java.io.IOException;
-import java.sql.SQLException;
+import io.codera.quant.util.MathUtil;
 import java.util.List;
 import java.util.Locale;
 import org.lst.trading.lib.backtest.BackTest;
 import org.lst.trading.lib.backtest.BackTestTradingContext;
 import org.lst.trading.lib.model.ClosedOrder;
 import org.lst.trading.lib.series.MultipleDoubleSeries;
-import org.lst.trading.main.strategy.kalman.Cointegration;
 
 import static java.lang.String.format;
 
 /**
- * Back test Kalman filter cointegration strategy against SPY/VOO pair using Interactive Brokers
- * historical data
+ * Back test for {@link io.codera.quant.strategy.meanrevertion.BollingerBandsStrategy}
  */
-public class BackTestApplication {
+public class BollingerBandsBackTest {
 
   public static final String DEFAULT_HOST = "localhost";
   public static final int DEFAULT_IB_PORT = 7497;
   public static final int DEFAULT_CLIENT_ID = 0;
   public static final int DAYS_OF_HISTORY = 7;
 
-  public static void main(String[] args) throws IOException, SQLException {
+  public static void main(String[] args) {
 
     ApiController controller =
         new ApiController(new IbConnectionHandler(), valueOf -> {}, valueOf -> {});
     controller.connect(DEFAULT_HOST, DEFAULT_IB_PORT, DEFAULT_CLIENT_ID, null);
 
-    List<String> contracts = ImmutableList.of("SPY", "VOO");
+    List<String> contracts = ImmutableList.of("EWA", "EWC");
 
     MultipleDoubleSeries priceSeries =
         Helper.getHistoryForSymbols(controller, DAYS_OF_HISTORY, contracts);
@@ -50,23 +50,32 @@ public class BackTestApplication {
 
     TradingContext tradingContext = new BackTestTradingContext();
 
-    Strategy strategy =
-        new KalmanFilterStrategy(
-            contracts.get(0),
-            contracts.get(1),
-            tradingContext,
-            new Cointegration(1e-4, 1e-3));
+    ZScore zScore = new ZScore(20, new MathUtil());
+
+    Strategy bollingerBandsStrategy = new BollingerBandsStrategy(
+        contracts.get(0),
+        contracts.get(1),
+        tradingContext,
+        zScore);
+
+    Criterion zScoreEntryCriterion = new ZScoreEntryCriterion(contracts.get(0), contracts.get(1), 1, zScore,
+        tradingContext);
+
+    Criterion zScoreExitCriterion = new ZScoreExitCriterion(contracts.get(0), contracts.get(1), 0, zScore,
+        tradingContext);
 
     Criterion noOpenOrdersExistCriterion =
         new NoOpenOrdersExistEntryCriterion(tradingContext, contracts);
     Criterion openOrdersExistForAllSymbolsCriterion =
         new OpenOrdersExistForAllSymbolsExitCriterion(tradingContext, contracts);
 
-    strategy.addEntryCriterion(noOpenOrdersExistCriterion);
-    strategy.addExitCriterion(openOrdersExistForAllSymbolsCriterion);
+    bollingerBandsStrategy.addEntryCriterion(noOpenOrdersExistCriterion);
+    bollingerBandsStrategy.addEntryCriterion(zScoreEntryCriterion);
+    bollingerBandsStrategy.addExitCriterion(openOrdersExistForAllSymbolsCriterion);
+    bollingerBandsStrategy.addExitCriterion(zScoreExitCriterion);
 
     // do the backtest
-    BackTest.Result result = backTest.run(strategy);
+    BackTest.Result result = backTest.run(bollingerBandsStrategy);
 
     // show results
     StringBuilder orders = new StringBuilder();
@@ -80,10 +89,8 @@ public class BackTestApplication {
           order.getClosePrice(),
           order.getPl()));
     }
-    System.out.print(orders);
+    System.out.println(orders);
 
-    System.out.println();
-    System.out.println("Backtest result of " + strategy.getClass() + ": " + strategy);
     System.out.println("Prices: " + priceSeries);
     System.out.println(format(Locale.US, "Simulated %d days, Initial deposit %d, Leverage %f",
         DAYS_OF_HISTORY, deposit, backTest.getLeverage()));
@@ -97,5 +104,4 @@ public class BackTestApplication {
     // TODO: quick and dirty method to finish the program. Implement a better way
     System.exit(0);
   }
-
 }

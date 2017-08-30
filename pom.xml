@@ -133,6 +133,12 @@
       <artifactId>junit</artifactId>
       <version>4.12</version>
     </dependency>
+    <!--Update based on your artifact version-->
+    <dependency>
+      <groupId>tws-api</groupId>
+      <artifactId>tws-api</artifactId>
+      <version>9.72.17-SNAPSHOT</version>
+    </dependency>
   </dependencies>
 
 </project>
